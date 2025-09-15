@@ -1,0 +1,617 @@
+```{r}
+# Loading packages
+
+library(ggplot2) # visualization
+library(ggrepel) # avoids overlapping text labels in graphs
+library(ggthemes) # extra themes for visualization
+library(scales) # automatically determines breaks and lables for axes and legends
+library(dplyr) # data manipulation
+library(VIM) # visualization and imputation of missing values
+library(data.table) # data manipulation
+library(formattable) # for applying formatting on vectors and dataframes
+library(plotly) # visualization
+library(corrplot) # visualization and correlation matrix
+library(GGally) # extends ggplot2
+library(caret) # classification and regression training
+library(car) # companion to applied regression
+```
+```{r}
+IMDB <- read.csv("C:/Users/Divya/Desktop/CSE3019/Project/IMDB_Dataset/movie_metadata.csv")
+str(IMDB)
+```
+
+DATA EXPLORATION
+
+```{r}
+# finding duplicate rows
+sum(duplicated(IMDB))
+```
+```{r}
+# deleting duplicate rows
+IMDB <- IMDB[!duplicated(IMDB), ]
+```
+
+```{r}
+str(IMDB)
+```
+
+```{r}
+library(stringr) # to efficiently work with strings
+
+# tidying up movie titles
+IMDB$movie_title <- gsub("Â", "", as.character(factor(IMDB$movie_title)))
+str_trim(IMDB$movie_title, side = "right")
+```
+
+```{r}
+head(IMDB$genres)
+```
+
+```{r}
+# create a new data frame
+genres.df <- as.data.frame(IMDB[,c("genres", "imdb_score")])
+
+```
+
+```{r}
+# separate different genres into new columns
+genres.df$Action <- sapply(1:length(genres.df$genres), function(x) if (genres.df[x,1] %like% "Action") 1 else 0)
+genres.df$Adventure <- sapply(1:length(genres.df$genres), function(x) if (genres.df[x,1] %like% "Adventure") 1 else 0)
+genres.df$Animation <- sapply(1:length(genres.df$genres), function(x) if (genres.df[x,1] %like% "Animation") 1 else 0)
+genres.df$Biography <- sapply(1:length(genres.df$genres), function(x) if (genres.df[x,1] %like% "Biography") 1 else 0)
+genres.df$Comedy <- sapply(1:length(genres.df$genres), function(x) if (genres.df[x,1] %like% "Comedy") 1 else 0)
+genres.df$Crime <- sapply(1:length(genres.df$genres), function(x) if (genres.df[x,1] %like% "Crime") 1 else 0)
+genres.df$Documentary <- sapply(1:length(genres.df$genres), function(x) if (genres.df[x,1] %like% "Documentary") 1 else 0)
+genres.df$Drama <- sapply(1:length(genres.df$genres), function(x) if (genres.df[x,1] %like% "Drama") 1 else 0)
+genres.df$Family <- sapply(1:length(genres.df$genres), function(x) if (genres.df[x,1] %like% "Family") 1 else 0)
+genres.df$Fantasy <- sapply(1:length(genres.df$genres), function(x) if (genres.df[x,1] %like% "Fantasy") 1 else 0)
+genres.df$`Film-Noir` <- sapply(1:length(genres.df$genres), function(x) if (genres.df[x,1] %like% "Film-Noir") 1 else 0)
+genres.df$History <- sapply(1:length(genres.df$genres), function(x) if (genres.df[x,1] %like% "History") 1 else 0)
+genres.df$Horror <- sapply(1:length(genres.df$genres), function(x) if (genres.df[x,1] %like% "Horror") 1 else 0)
+genres.df$Musical <- sapply(1:length(genres.df$genres), function(x) if (genres.df[x,1] %like% "Musical") 1 else 0)
+genres.df$Mystery <- sapply(1:length(genres.df$genres), function(x) if (genres.df[x,1] %like% "Mystery") 1 else 0)
+genres.df$News <- sapply(1:length(genres.df$genres), function(x) if (genres.df[x,1] %like% "News") 1 else 0)
+genres.df$Romance <- sapply(1:length(genres.df$genres), function(x) if (genres.df[x,1] %like% "Romance") 1 else 0)
+genres.df$`Sci-Fi` <- sapply(1:length(genres.df$genres), function(x) if (genres.df[x,1] %like% "Sci-Fi") 1 else 0)
+genres.df$Short <- sapply(1:length(genres.df$genres), function(x) if (genres.df[x,1] %like% "Short") 1 else 0)
+genres.df$Sport <- sapply(1:length(genres.df$genres), function(x) if (genres.df[x,1] %like% "Sport") 1 else 0)
+genres.df$Thriller <- sapply(1:length(genres.df$genres), function(x) if (genres.df[x,1] %like% "Thriller") 1 else 0)
+genres.df$War <- sapply(1:length(genres.df$genres), function(x) if (genres.df[x,1] %like% "War") 1 else 0)
+genres.df$Western <- sapply(1:length(genres.df$genres), function(x) if (genres.df[x,1] %like% "Western") 1 else 0)
+```
+
+```{r}
+# get the mean of imdb score for different genres
+means <- rep(0,23)
+for (i in 1:23) {
+  means[i] <- mean(genres.df$imdb_score[genres.df[i+2]==1])
+}
+```
+
+```{r}
+# plot the means
+barplot(means, main = "Average IMDB scores for different genres")
+```
+
+```{r}
+#Removing genres as it does not affect the result
+IMDB <- subset(IMDB, select = -c(genres))
+```
+
+
+DATA CLEANING
+
+
+```{r}
+#Finding the missing values
+colSums(sapply(IMDB, is.na))
+```
+
+```{r}
+#Visualizing missing data using heatmap
+missing.values <- aggr(IMDB, sortVars = T, prop = T, sortCombs = T, cex.lab = 1.5, cex.axis = .6, cex.numbers = 5, combined = F, gap = -.2)
+```
+
+```{r}
+#Deleting rows with null values under gross and budget attributes
+IMDB <- IMDB[!is.na(IMDB$gross), ]
+IMDB <- IMDB[!is.na(IMDB$budget), ]
+dim(IMDB)
+```
+
+```{r}
+#Checking rows without any missing data
+sum(complete.cases(IMDB))
+```
+
+```{r}
+colSums(sapply(IMDB, is.na))
+```
+
+```{r}
+table(IMDB$aspect_ratio)
+```
+
+```{r}
+IMDB$aspect_ratio[is.na(IMDB$aspect_ratio)] <- 0
+mean(IMDB$imdb_score[IMDB$aspect_ratio == 1.85])
+```
+
+```{r}
+mean(IMDB$imdb_score[IMDB$aspect_ratio == 2.35])
+```
+
+```{r}
+mean(IMDB$imdb_score[IMDB$aspect_ratio != 1.85 & IMDB$aspect_ratio != 2.35])
+```
+
+```{r}
+#removing aspect_ratio as it won't affect the result
+IMDB <- subset(IMDB, select = -c(aspect_ratio))
+```
+
+```{r}
+# replacing NA with column average for facenumber_in_poster
+IMDB$facenumber_in_poster[is.na(IMDB$facenumber_in_poster)] <- round(mean(IMDB$facenumber_in_poster, na.rm = TRUE))
+```
+
+```{r}
+# converting 0s into NAs for other predictors
+IMDB[,c(5,6,8,13,24,26)][IMDB[,c(5,6,8,13,24,26)] == 0] <- NA
+```
+
+```{r}
+# imputing missing value with column mean
+IMDB$num_critic_for_reviews[is.na(IMDB$num_critic_for_reviews)] <- round(mean(IMDB$num_critic_for_reviews, na.rm = TRUE))
+IMDB$duration[is.na(IMDB$duration)] <- round(mean(IMDB$duration, na.rm = TRUE))
+IMDB$director_facebook_likes[is.na(IMDB$director_facebook_likes)] <- round(mean(IMDB$director_facebook_likes, na.rm = TRUE))
+IMDB$actor_3_facebook_likes[is.na(IMDB$actor_3_facebook_likes)] <- round(mean(IMDB$actor_3_facebook_likes, na.rm = TRUE))
+IMDB$actor_1_facebook_likes[is.na(IMDB$actor_1_facebook_likes)] <- round(mean(IMDB$actor_1_facebook_likes, na.rm = TRUE))
+IMDB$cast_total_facebook_likes[is.na(IMDB$cast_total_facebook_likes)] <- round(mean(IMDB$cast_total_facebook_likes, na.rm = TRUE))
+IMDB$actor_2_facebook_likes[is.na(IMDB$actor_2_facebook_likes)] <- round(mean(IMDB$actor_2_facebook_likes, na.rm = TRUE))
+IMDB$movie_facebook_likes[is.na(IMDB$movie_facebook_likes)] <- round(mean(IMDB$movie_facebook_likes, na.rm = TRUE))
+```
+
+```{r}
+table(IMDB$content_rating)
+```
+
+```{r}
+#deleting the rows having missing values like " " as they cannot be replaced either
+IMDB <- IMDB[!(IMDB$content_rating %in% ""),]
+```
+
+```{r}
+#modifying the data according to present content_rating scheme
+IMDB$content_rating[IMDB$content_rating == 'M']   <- 'PG' 
+IMDB$content_rating[IMDB$content_rating == 'GP']  <- 'PG' 
+IMDB$content_rating[IMDB$content_rating == 'X']   <- 'NC-17'
+```
+
+```{r}
+IMDB$content_rating[IMDB$content_rating == 'Approved']  <- 'R' 
+IMDB$content_rating[IMDB$content_rating == 'Not Rated'] <- 'R' 
+IMDB$content_rating[IMDB$content_rating == 'Passed']    <- 'R' 
+IMDB$content_rating[IMDB$content_rating == 'Unrated']   <- 'R' 
+IMDB$content_rating <- factor(IMDB$content_rating)
+table(IMDB$content_rating)
+```
+```{r}
+
+# Create Data
+df <- as.data.frame(table(IMDB$content_rating))
+colnames(df) <- c("Rating_Type", "Frequency")
+df
+```
+```{r}
+pie <- ggplot(df, aes(x = "", y=Frequency, fill = factor(Rating_Type))) +
+geom_bar(width = 1, stat = "identity") +
+theme(axis.line = element_blank(),plot.title = element_text(hjust=0.5)) +
+labs(fill="Rating_Type",x=NULL,y=NULL,title="Pie Chart of Rating Types",caption="Source: IMDB")
+
+pie <- pie + coord_polar(theta = "y", start=0)
+
+pie
+```
+
+```{r}
+#adding 2 new columns in the dataset, calculated using the existing gross and budget columns
+IMDB <- IMDB %>% 
+  mutate(profit = gross - budget,
+         return_on_investment_perc = (profit/budget)*100)
+```
+
+```{r}
+table(IMDB$color)
+```
+
+```{r}
+# deleting predictor color as almost all movies are coloured
+IMDB <- subset(IMDB, select = -c(color))
+```
+
+```{r}
+table(IMDB$language)
+```
+
+```{r}
+# max english and hence, removing the language attribute
+IMDB <- subset(IMDB, select = -c(language))
+```
+
+```{r}
+table(IMDB$country)
+```
+
+```{r}
+#grouping countries into USA UK and others 
+levels(IMDB$country) <- c(levels(IMDB$country), "Others")
+IMDB$country[(IMDB$country != 'USA')&(IMDB$country != 'UK')] <- 'Others' 
+IMDB$country <- factor(IMDB$country)
+table(IMDB$country)
+```
+```{r}
+# Create Data
+df <- as.data.frame(table(IMDB$country))
+colnames(df) <- c("Country", "Frequency")
+df
+```
+```{r}
+pie <- ggplot(df, aes(x = "", y=Frequency, fill = factor(Country))) +
+geom_bar(width = 1, stat = "identity") +
+theme(axis.line = element_blank(),plot.title = element_text(hjust=0.5)) +
+labs(fill="Country",x=NULL,y=NULL,title="Pie Chart of Countries",caption="Source: IMDB")
+
+pie <- pie + coord_polar(theta = "y", start=0)
+
+pie
+```
+
+DATA VISUALIZATION
+
+```{r}
+histo = ggplot(IMDB, aes(title_year)) +
+  geom_bar() +
+  labs(x = "Year movie was released", y = "Movie Count", title = "Histogram of Movies released") +
+  theme(plot.title = element_text(hjust = 0.5))
+
+histo
+```
+
+
+```{r}
+#removing the movies before 1990 as cinema wasn't that popular back then
+IMDB <- IMDB[IMDB$title_year >= 1980,]
+```
+
+```{r}
+#Finding the top 20 movies based on profits
+IMDB %>%
+  filter(title_year %in% c(2000:2016)) %>%
+  arrange(desc(profit)) %>%
+  top_n(20, profit) %>%
+  ggplot(aes(x=budget/1000000, y=profit/1000000)) +
+  geom_point() +
+  geom_smooth() + 
+  geom_text_repel(aes(label=movie_title), max.overlaps = Inf) +
+  labs(x = "Budget $million", y = "Profit $million", title = "Top 20 Profitable Movies") +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+```{r}
+#Finding top 20 movies based on return on investment
+IMDB %>%
+  filter(budget > 100000) %>%
+  mutate(profit = gross - budget,
+         return_on_investment_perc = (profit/budget)*100) %>%
+  arrange(desc(profit)) %>%
+  top_n(20, profit) %>%
+  ggplot(aes(x=budget/1000000, y = return_on_investment_perc)) + 
+  geom_point(size = 2) + 
+  geom_smooth(size = 1) + 
+  geom_text_repel(aes(label = movie_title), size = 3, max.overlaps = Inf) + 
+  xlab("Budget $million") + 
+  ylab("Percent Return on Investment") + 
+  ggtitle("20 Most Profitable Movies based on its Return on Investment")
+```
+
+```{r}
+#Finding the top directors based on IMDB ratings
+IMDB %>%
+  group_by(director_name) %>%
+  summarise(avg_imdb = mean(imdb_score)) %>%
+  arrange(desc(avg_imdb)) %>%
+  top_n(20, avg_imdb) %>%
+  formattable(list(avg_imdb = color_bar("yellow")), align = 'l')
+```
+
+```{r}
+#Finding relation between commercial success and critical acclaim 
+IMDB %>%
+  top_n(20, profit) %>%
+  ggplot(aes(x = imdb_score, y = gross/10^6, size = profit/10^6, color = content_rating)) + 
+  geom_point() + 
+  geom_hline(aes(yintercept = 500)) + 
+  geom_vline(aes(xintercept = 7.75)) + 
+  geom_text_repel(aes(label = movie_title), size = 4) +
+  xlab("Imdb score") + 
+  ylab("Gross money earned in million dollars") + 
+  ggtitle("Commercial success Vs Critical acclaim") +
+  annotate("text", x = 8.5, y = 700, label = "High ratings \n & High gross") +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+```{r}
+#Relation between facebook likes and the IMDB score 
+IMDB %>%
+  plot_ly(x = ~movie_facebook_likes, y = ~imdb_score, color = ~content_rating , mode = "markers", text = ~content_rating, alpha = 0.7, type = "scatter")
+```
+
+DATA PRE-PROCESSING
+
+```{r}
+# number of directors
+sum(uniqueN(IMDB$director_name))
+```
+
+```{r}
+# number of actors
+sum(uniqueN(IMDB[, c("actor_1_name", "actor_2_name", "actor_3_name")]))
+```
+
+```{r}
+#The movie links, plot keywords and actor/director names can also be removed 
+IMDB <- subset(IMDB, select = -c(director_name, actor_2_name, actor_1_name,
+                                 movie_title, actor_3_name, plot_keywords, 
+                                 movie_imdb_link))
+```
+
+```{r}
+#removing the attributes which were added earlier for data exploration (to prevent multicollinearity)
+IMDB <- subset(IMDB, select = -c(profit, return_on_investment_perc))
+```
+
+```{r}
+#Correlation heatmap for the data
+ggcorr(IMDB, label = TRUE, label_round = 2, label_size = 3.5, size = 2, hjust = .85) +
+  ggtitle("Correlation Heatmap") +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+```{r}
+#modifying data to avoid high correlations
+
+# adding up actor 2 and 3 facebook likes into other actors facebook likes
+IMDB$other_actors_facebook_likes <- IMDB$actor_2_facebook_likes + IMDB$actor_3_facebook_likes
+
+# using the ratio of critical reviews amount to total reviews amount
+IMDB$critic_review_ratio <- IMDB$num_critic_for_reviews / IMDB$num_user_for_reviews
+
+# deleting columns
+IMDB <- subset(IMDB, select = -c(cast_total_facebook_likes, actor_2_facebook_likes, actor_3_facebook_likes, num_critic_for_reviews, num_user_for_reviews))
+```
+
+```{r}
+#modified data
+ggcorr(IMDB, label = TRUE, label_round = 2, label_size = 4, size = 3, hjust = .85) +
+  ggtitle("Correlation Heatmap") +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+```{r}
+# creating ranges of scores to predict if a movie will fall in any one particular range
+IMDB$binned_score <- cut(IMDB$imdb_score, breaks = c(0,4,6,8,10))
+```
+
+```{r}
+#organising the dataset and renaming columns
+IMDB <- IMDB[,c(9,4,5,14,12,2,3,13,1,6,10,7,8,11,15)]
+colnames(IMDB) <- c("budget", "gross", "user_vote", "critic_review_ratio",
+                    "movie_fb", "director_fb", "actor1_fb", "other_actors_fb",
+                    "duration", "face_number", "year", "country", "content",
+                    "imdb_score", "binned_score")
+```
+
+```{r}
+str(IMDB)
+```
+
+```{r}
+#splitting dataset into training, validation and testing datasets with a ratio of 6:2:2
+set.seed(45)
+train.index <- sample(row.names(IMDB), dim(IMDB)[1]*0.6)
+valid.index <- sample(setdiff(row.names(IMDB), train.index), dim(IMDB)[1]*0.2)
+test.index <- setdiff(row.names(IMDB), union(train.index, valid.index))
+train <- IMDB[train.index, ]
+valid <- IMDB[valid.index, ]
+test <- IMDB[test.index, ]
+```
+```{r}
+str(train)
+```
+```{r}
+str(valid)
+```
+```{r}
+str(test)
+```
+
+
+IMPLEMENTING THE ALGORITHMS
+
+CLASSIFICATION TREE 
+
+```{r}
+# FULL GROWN TREE
+
+library(rpart)
+library(rpart.plot)
+# Full grown tree
+class.tree <- rpart(binned_score ~ . -imdb_score, data = train, method = "class")
+## plot tree
+prp(class.tree, type = 1, extra = 1, under = TRUE, split.font = 2, varlen = 0) 
+```
+
+```{r}
+# BEST PRUNED TREE
+
+# cross-validation procedure
+# argument cp sets the smallest value for the complexity parameter.
+set.seed(51)
+cv.ct <- rpart(binned_score ~ . -imdb_score, data = train, method = "class", 
+               cp = 0.00001, minsplit = 5, xval = 5)
+printcp(cv.ct)
+```
+
+```{r}
+# pruned by lowest cp
+pruned.ct <- prune(cv.ct, 
+                   cp = cv.ct$cptable[which.min(cv.ct$cptable[,"xerror"]),"CP"])
+length(pruned.ct$frame$var[pruned.ct$frame$var == "<leaf>"])
+```
+
+```{r}
+prp(pruned.ct, type = 1, extra = 1, split.font = 1, varlen = -10)
+```
+
+```{r}
+# Applying model on training set
+tree.pred.train <- predict(pruned.ct, train, type = "class")
+
+# Generating confusion matrix for training data
+confusionMatrix(tree.pred.train, train$binned_score)
+```
+
+```{r}
+# Applying model on validation set
+tree.pred.valid <- predict(pruned.ct, valid, type = "class")
+
+# Generating confusion matrix for validation data
+confusionMatrix(tree.pred.valid, valid$binned_score)
+```
+
+```{r}
+# Applying model on test set
+tree.pred.test <- predict(pruned.ct, test, type = "class")
+
+# generating confusion matrix for test data
+confusionMatrix(tree.pred.test, test$binned_score)
+```
+
+K-NEAREST NEIGHBOURS
+
+```{r}
+#Preparing data for KNN
+
+library(FNN)
+
+# Use model.matrix() to create dummy variables for country and content.
+IMDB2 <- IMDB
+IMDB2$country <- as.factor(IMDB2$country)
+IMDB2$content <- as.factor(IMDB2$content)
+IMDB2[,c("country_UK", "country_USA", "country_Others")] <- model.matrix( ~ country - 1, data = IMDB2)
+IMDB2[,c("content_G", "content_NC17", "content_PG", "content_PG13", "content_R")] <- model.matrix( ~ content - 1, data = IMDB2)
+
+# Select useful variables for future prediction.
+IMDB2 <- IMDB2[, c(1,2,3,4,5,6,7,8,9,10,11,16,17,18,19,20,21,22,23,15)]
+
+# Partition the data into training and validation sets.
+set.seed(52)
+train2 <- IMDB2[train.index, ]
+valid2 <- IMDB2[valid.index, ]
+test2 <- IMDB2[test.index, ]
+```
+
+```{r}
+#Normalising data
+
+# initialize normalized training, validation, test data, complete data frames to originals
+train2.norm <- train2
+valid2.norm <- valid2
+test2.norm <- test2
+IMDB2.norm <- IMDB2
+
+# use preProcess() from the caret package to normalize predictors.
+norm.values <- preProcess(train2[, -20], method=c("center", "scale"))
+train2.norm[, -20] <- predict(norm.values, train2[, -20])
+valid2.norm[, -20] <- predict(norm.values, valid2[, -20])
+test2.norm[, -20] <- predict(norm.values, test2[, -20])
+IMDB2.norm[, -20] <- predict(norm.values, IMDB2[, -20])
+```
+
+```{r}
+# initializing a data frame with two columns: k, and accuracy.
+accuracy.df <- data.frame(k = seq(1, 20, 1), accuracy = rep(0, 20))
+
+# compute knn for different k on validation data.
+for(i in 1:20) {
+  knn.pred <- knn(train2.norm[, -20], valid2.norm[, -20],
+                  cl = train2.norm[, 20], k = i)
+  accuracy.df[i, 2] <- confusionMatrix(knn.pred, valid2.norm[, 20])$overall[1]
+}
+accuracy.df
+```
+
+```{r}
+# APPLYING MODEL ON TEST DATASET
+knn.pred.test <- knn(train2.norm[, -20], test2.norm[, -20],
+                cl = train2.norm[, 20], k = 9)
+
+# generate confusion matrix for test data
+accuracy <- confusionMatrix(knn.pred.test, test2.norm[, 20])$overall[1]
+accuracy
+```
+
+RANDOM FOREST
+
+```{r}
+
+# BUilding Model
+
+library(randomForest)
+
+set.seed(53)
+rf <- randomForest(binned_score ~ . -imdb_score, data = train, mtry = 5)
+# Show model error
+plot(rf)
+legend('topright', colnames(rf$err.rate), col=1:5, fill=1:5)
+```
+```{r}
+# Getting importance
+importance <- importance(rf)
+varImportance <- data.frame(Variables = row.names(importance), 
+                            Importance = round(importance[ ,'MeanDecreaseGini'],2))
+
+# Creating a rank variable based on importance
+rankImportance <- varImportance %>%
+  mutate(Rank = paste0('#',dense_rank(desc(Importance))))
+
+# Using ggplot2 to visualize the relative importance of variables
+ggplot(rankImportance, aes(x = reorder(Variables, Importance), 
+                           y = Importance, fill = Importance)) +
+  geom_bar(stat='identity') + 
+  geom_text(aes(x = Variables, y = 0.5, label = Rank),
+            hjust=0, vjust=0.55, size = 4, colour = 'red') +
+  labs(x = 'Variables') +
+  coord_flip() + 
+  theme_few()
+```
+```{r}
+set.seed(632)
+
+# Applying model on validation set
+rf.pred.valid <- predict(rf, valid)
+
+# generating confusion matrix for validation data
+confusionMatrix(rf.pred.valid, valid$binned_score)
+```
+
+```{r}
+set.seed(633)
+
+# Applying model on test set
+rf.pred.test <- predict(rf, test)
+
+# generating confusion matrix for test data
+confusionMatrix(rf.pred.test, test$binned_score)
+```
